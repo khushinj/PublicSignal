@@ -20,6 +20,11 @@ client = MongoClient(
 db = client["publicsignal_db"]
 complaints_collection = db["complaints"]
 
+admins_collection = db["admins"]
+
+# Ensure every admin email is unique
+admins_collection.create_index("email", unique=True)
+
 # Verify the connection
 def check_database_connection():
     client.admin.command("ping")

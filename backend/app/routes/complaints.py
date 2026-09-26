@@ -2,8 +2,8 @@
 from app.database import complaints_collection
 from datetime import datetime, timezone
 from uuid import uuid4
-
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Depends
+from app.auth import get_current_admin
 from pydantic import BaseModel, Field
 
 router = APIRouter(prefix="/api", tags=["Complaints"])
@@ -77,7 +77,13 @@ def submit_complaint(request: ComplaintRequest):
 
 
 @router.get("/complaints")
-def get_complaints():
+def get_complaints(
+    current_admin: dict = Depends(get_current_admin),
+):
+    complaints = list(
+        complaints_collection.find({}, {"_id": 0})
+    )
+    return complaints
     try:
         complaints = list(
             complaints_collection.find(
