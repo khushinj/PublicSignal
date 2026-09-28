@@ -2,6 +2,7 @@
 import { useEffect, useState } from "react";
 import "./Dashboard.css";
 
+
 export default function Dashboard() {
   const [complaints, setComplaints] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -13,23 +14,76 @@ export default function Dashboard() {
     try {
       const token = sessionStorage.getItem("admin_token");
 
+      console.log("Admin token exists:", Boolean(token));
+
+      if (!token) {
+        window.location.href = "/admin/login";
+        return;
+      }
+
       const response = await fetch("/api/complaints", {
+        method: "GET",
         headers: {
-          Authorization: `Bearer ${token}`,
+          "Authorization": `Bearer ${token}`,
+          "Content-Type": "application/json",
         },
       });
 
-      if (!response.ok) {
-        throw new Error(`Request failed: ${response.status}`);
-      }
+      console.log("Complaints response status:", response.status);
 
       const data = await response.json();
 
-      console.log("Complaints received:", data);
+      if (!response.ok) {
+        throw new Error(data.detail || "Failed to fetch complaints");
+      }
 
+      console.log("Complaints received:", data);
+      console.log("Is array:", Array.isArray(data));
+      console.log("Data length:", data?.length);
+      console.log("First complaint:", data?.[0]);
       setComplaints(data);
     } catch (error) {
-      console.error("Error loading complaints:", error);
+      console.error("Error fetching complaints:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+
+  const updateComplaintStatus = async (complaintId, newStatus) => {
+    try {
+      const token = sessionStorage.getItem("admin_token");
+
+      const response = await fetch(
+        `/api/complaints/${complaintId}/status`,
+        {
+          method: "PATCH",
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ status: newStatus }),
+        }
+      );
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.detail || "Failed to update status");
+      }
+
+      // Update the dashboard without refreshing the page
+      setComplaints((prev) =>
+        prev.map((complaint) =>
+          complaint._id === complaintId
+            ? { ...complaint, status: newStatus }
+            : complaint
+        )
+      );
+
+    } catch (error) {
+      console.error("Status update error:", error);
+      alert(error.message || "Could not update complaint status");
     }
   };
 
@@ -37,19 +91,22 @@ export default function Dashboard() {
     fetchComplaints();
   }, []);
 
-  const filteredComplaints = complaints.filter((complaint) => {
-    const searchText = search.toLowerCase();
+  // const filteredComplaints = complaints.filter((complaint) => {
+  //   const searchText = search.toLowerCase();
 
-    const matchesSearch =
-      (complaint.text || "").toLowerCase().includes(searchText) ||
-      (complaint.location_raw || "").toLowerCase().includes(searchText);
+  //   const matchesSearch =
+  //     (complaint.text || "").toLowerCase().includes(searchText) ||
+  //     (complaint.location_raw || "").toLowerCase().includes(searchText);
 
-    const matchesLanguage =
-      language === "all" ||
-      complaint.language === language;
+  //   const matchesLanguage =
+  //     language === "all" ||
+  //     complaint.language === language;
 
-    return matchesSearch && matchesLanguage;
-  });
+  //   return matchesSearch && matchesLanguage;
+  // });
+
+
+  const filteredComplaints = complaints;
 
   const pendingCount = complaints.filter(
     (complaint) =>
@@ -63,6 +120,15 @@ export default function Dashboard() {
   const marathiCount = complaints.filter(
     (complaint) => complaint.language === "marathi"
   ).length;
+
+
+  console.log({
+    loading,
+    complaintsCount: complaints.length,
+    filteredCount: filteredComplaints.length,
+  });
+
+
 
   return (
     <div className="dashboard">
@@ -188,9 +254,26 @@ export default function Dashboard() {
                     </td>
 
                     <td>
-                      <span className="status-tag">
-                        {complaint.status || "pending"}
-                      </span>
+                      <select
+                        className="status-select"
+                        value={
+                          (complaint.status || "Pending")
+                            .toLowerCase()
+                            .replace(/_/g, " ") === "pending processing"
+                            ? "Pending"
+                            : (complaint.status || "Pending")
+                              .replace(/_/g, " ")
+                              .replace(/\b\w/g, (c) => c.toUpperCase())
+                        }
+                        onChange={(e) =>
+                          updateComplaintStatus(complaint._id, e.target.value)
+                        }
+                      >
+                        <option value="Pending">Pending</option>
+                        <option value="In Progress">In Progress</option>
+                        <option value="Resolved">Resolved</option>
+                        <option value="Rejected">Rejected</option>
+                      </select>
                     </td>
                   </tr>
                 ))}

@@ -5,6 +5,15 @@ from uuid import uuid4
 from fastapi import APIRouter, HTTPException, Depends
 from app.auth import get_current_admin
 from pydantic import BaseModel, Field
+from bson import ObjectId
+from bson.errors import InvalidId
+
+
+
+class ComplaintStatusUpdate(BaseModel):
+    status: str
+
+
 
 router = APIRouter(prefix="/api", tags=["Complaints"])
 
@@ -65,7 +74,7 @@ def submit_complaint(request: ComplaintRequest):
         "location_raw": request.location_raw,
         "source": request.source,
         "timestamp": datetime.now(timezone.utc).isoformat(),
-        "status": "pending_processing"
+        "status": "Pending"
     }
 
     complaints.append(complaint)
@@ -102,3 +111,47 @@ def get_complaints(
             status_code=500,
             detail="Failed to retrieve complaints"
         )
+
+
+@router.patch("/complaints/{complaint_id}/status")
+def update_complaint_status(
+    complaint_id: str,
+    request: ComplaintStatusUpdate,
+    current_admin: dict = Depends(get_current_admin),
+):
+    allowed_statuses = [
+    "Pending",
+    "In Progress",
+    "Resolved",
+    "Rejected",
+]
+
+    if request.status not in allowed_statuses:
+        raise HTTPException(
+            status_code=400,
+            detail="Invalid complaint status",
+        )
+
+    try:
+        object_id = ObjectId(complaint_id)
+    except InvalidId:
+        raise HTTPException(
+            status_code=400,
+            detail="Invalid complaint ID",
+        )
+
+    result = complaints_collection.update_one(
+        {"_id": object_id},
+        {"$set": {"status": request.status}},
+    )
+
+    if result.matched_count == 0:
+        raise HTTPException(
+            status_code=404,
+            detail="Complaint not found",
+        )
+
+    return {
+        "message": "Complaint status updated successfully",
+        "status": request.status,
+    }
