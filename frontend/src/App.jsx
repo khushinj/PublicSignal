@@ -1,5 +1,5 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import "./App.css";
 
 const API_URL = "";
@@ -8,9 +8,61 @@ function App() {
   const [text, setText] = useState("");
   const [language, setLanguage] = useState("hindi");
   const [location, setLocation] = useState("");
+  const [landmark, setLandmark] = useState("");
+  const [locationSuggestions, setLocationSuggestions] = useState([]);
+  const [selectedLocation, setSelectedLocation] = useState(null);
+  const [locationLoading, setLocationLoading] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState(null);
+
+  useEffect(() => {
+    if (location.trim().length < 3) {
+      setLocationSuggestions([]);
+      setSelectedLocation(null);
+      return;
+    }
+
+    // Don't search again if the user has selected a suggestion.
+    if (selectedLocation?.display_name === location) {
+      setLocationSuggestions([]);
+      return;
+    }
+
+    const controller = new AbortController();
+
+    const timer = setTimeout(async () => {
+      try {
+        setLocationLoading(true);
+
+        const response = await fetch(
+          `/api/location-suggestions?q=${encodeURIComponent(location)}`,
+          { signal: controller.signal }
+        );
+
+        if (!response.ok) {
+          throw new Error("Could not load location suggestions");
+        }
+
+        const data = await response.json();
+
+        setLocationSuggestions(data);
+      } catch (error) {
+        if (error.name !== "AbortError") {
+          console.error("Location suggestions error:", error);
+        }
+      } finally {
+        setLocationLoading(false);
+      }
+    }, 1000);
+
+    return () => {
+      clearTimeout(timer);
+      controller.abort();
+    };
+  }, [location, selectedLocation]);
+
+
 
   async function handleSubmit(event) {
     event.preventDefault();
@@ -32,6 +84,7 @@ function App() {
             text,
             language,
             location_raw: location,
+            landmark: landmark,
             source: "web-text",
           }),
         }
@@ -61,6 +114,7 @@ function App() {
       setSuccess(data.complaint);
       setText("");
       setLocation("");
+      setLandmark("");
     } catch (err) {
       setError(
         err.message || "Unable to connect to the server."
@@ -99,12 +153,71 @@ function App() {
           Village, ward or area
         </label>
 
+        <div className="location-autocomplete">
+          <input
+            type="text"
+            value={location}
+            onChange={(e) => {
+              setLocation(e.target.value);
+              setSelectedLocation(null);
+            }}
+            placeholder="Start typing your area, street, or landmark..."
+            required
+            autoComplete="off"
+          />
+
+          {locationLoading && (
+            <p className="location-hint">
+              Searching locations...
+            </p>
+          )}
+
+          {locationSuggestions.length > 0 && (
+            <div className="location-suggestions">
+              {locationSuggestions.map((place, index) => (
+                <button
+                  type="button"
+                  key={`${place.latitude}-${place.longitude}-${index}`}
+                  className="location-suggestion"
+                  onClick={() => {
+                    setLocation(place.display_name);
+                    setSelectedLocation(place);
+                    setLocationSuggestions([]);
+                  }}
+                >
+                  {place.display_name}
+                </button>
+              ))}
+            </div>
+          )}
+
+          {location.length >= 3 &&
+            !locationLoading &&
+            locationSuggestions.length === 0 &&
+            !selectedLocation && (
+              <p className="location-hint">
+                Select a location from the suggestions when available.
+              </p>
+            )}
+
+          {selectedLocation && (
+            <p className="location-success">
+              Location selected and verified.
+            </p>
+          )}
+        </div>
+
+
+        <label htmlFor="landmark">
+          Nearby landmark
+        </label>
+
         <input
-          id="location"
+          id="landmark"
           type="text"
-          value={location}
-          onChange={(e) => setLocation(e.target.value)}
-          placeholder="Enter your location"
+          value={landmark}
+          onChange={(e) => setLandmark(e.target.value)}
+          placeholder="e.g. Near railway station, school or temple"
           required
           minLength={2}
           maxLength={200}

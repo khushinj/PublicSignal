@@ -1,4 +1,3 @@
-
 /* ==================================================
    PUBLICSIGNAL | CIVIC TECH ADMIN DASHBOARD
    Style-only update. Existing JSX class names retained.
@@ -774,12 +773,59 @@
   }
 }
 
+.dashboard-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.logout-button {
+  padding: 12px 20px;
+  border: 1px solid #d1d9d6;
+  border-radius: 10px;
+  background: #ffffff;
+  color: #123c36;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s ease;
+}
+
+.logout-button:hover {
+  background: #f5f7f6;
+}
+
+.location-cell {
+  min-width: 180px;
+}
+
+.complaint-location {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.location-name {
+  font-size: 13px;
+  font-weight: 500;
+  color: #263b35;
+}
+
+.landmark-name {
+  font-size: 11px;
+  font-weight: 400;
+  color: #7b8581;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+}
+
 
 /* =========================
    REDUCED MOTION
 ========================= */
 
 @media (prefers-reduced-motion: reduce) {
+
   .dashboard *,
   .dashboard *::before,
   .dashboard *::after {

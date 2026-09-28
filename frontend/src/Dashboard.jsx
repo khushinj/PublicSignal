@@ -1,20 +1,30 @@
 
 import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import "./Dashboard.css";
 
 
 export default function Dashboard() {
+
+
+  const navigate = useNavigate();
   const [complaints, setComplaints] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [search, setSearch] = useState("");
   const [language, setLanguage] = useState("all");
 
+
+  const handleLogout = () => {
+    sessionStorage.removeItem("admin_token");
+    navigate("/admin/login", { replace: true });
+  };
+
   const fetchComplaints = async () => {
     try {
       const token = sessionStorage.getItem("admin_token");
 
-      console.log("Admin token exists:", Boolean(token));
+      // console.log("Admin token exists:", Boolean(token));
 
       if (!token) {
         window.location.href = "/admin/login";
@@ -29,18 +39,39 @@ export default function Dashboard() {
         },
       });
 
-      console.log("Complaints response status:", response.status);
+      // console.log("Complaints response status:", response.status);
 
-      const data = await response.json();
+      const responseText = await response.text();
+
+      // console.log("Backend response:", responseText);
+
+      let data;
+
+      try {
+        data = JSON.parse(responseText);
+      } catch {
+        throw new Error(
+          `Backend returned invalid JSON: ${responseText}`
+        );
+      }
+
+      if (!response.ok) {
+        throw new Error(data.detail || data.message || "Status update failed");
+      }
+
+      // Update dashboard immediately without refreshing
+      setComplaints((prevComplaints) =>
+        prevComplaints.map((complaint) =>
+          complaint.id === complaint.Id
+            ? { ...complaint, status: newStatus }
+            : complaint
+        )
+      );
 
       if (!response.ok) {
         throw new Error(data.detail || "Failed to fetch complaints");
       }
 
-      console.log("Complaints received:", data);
-      console.log("Is array:", Array.isArray(data));
-      console.log("Data length:", data?.length);
-      console.log("First complaint:", data?.[0]);
       setComplaints(data);
     } catch (error) {
       console.error("Error fetching complaints:", error);
@@ -73,9 +104,9 @@ export default function Dashboard() {
       }
 
       // Update the dashboard without refreshing the page
-      setComplaints((prev) =>
-        prev.map((complaint) =>
-          complaint._id === complaintId
+      setComplaints((prevComplaints) =>
+        prevComplaints.map((complaint) =>
+          complaint.id === complaintId
             ? { ...complaint, status: newStatus }
             : complaint
         )
@@ -134,13 +165,22 @@ export default function Dashboard() {
           </p>
         </div>
 
-        <button
-          className="refresh-button"
-          onClick={fetchComplaints}
-          disabled={loading}
-        >
-          {loading ? "Loading..." : "Refresh data"}
-        </button>
+        <div className="dashboard-actions">
+          <button
+            className="refresh-button"
+            onClick={fetchComplaints}
+            disabled={loading}
+          >
+            {loading ? "Loading..." : "Refresh data"}
+          </button>
+
+          <button
+            className="logout-button"
+            onClick={handleLogout}
+          >
+            Logout
+          </button>
+        </div>
       </header>
 
       <section className="stats-grid">
@@ -230,7 +270,19 @@ export default function Dashboard() {
                       {complaint.text}
                     </td>
 
-                    <td>{complaint.location_raw}</td>
+                    <td className="location-cell">
+                      <div className="complaint-location">
+                        <span className="location-name">
+                          {complaint.location_raw || "N/A"}
+                        </span>
+
+                        {complaint.landmark && (
+                          <span className="landmark-name">
+                            {complaint.landmark}
+                          </span>
+                        )}
+                      </div>
+                    </td>
 
                     <td>
                       <span className="language-tag">
@@ -259,7 +311,7 @@ export default function Dashboard() {
                               .replace(/\b\w/g, (c) => c.toUpperCase())
                         }
                         onChange={(e) =>
-                          updateComplaintStatus(complaint._id, e.target.value)
+                          updateComplaintStatus(complaint.id, e.target.value)
                         }
                       >
                         <option value="Pending">Pending</option>
