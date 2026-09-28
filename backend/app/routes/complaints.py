@@ -43,7 +43,7 @@ def submit_complaint(request: ComplaintRequest):
         "location_raw": request.location_raw,
         "source": request.source,
         "timestamp": datetime.now(timezone.utc).isoformat(),
-        "status": "pending_processing"
+        "status": "Pending"
     }
 
     try:

@@ -110,7 +110,7 @@ export default function Dashboard() {
 
   const pendingCount = complaints.filter(
     (complaint) =>
-      complaint.status === "pending_processing"
+      complaint.status === "Pending"
   ).length;
 
   const hindiCount = complaints.filter(
@@ -120,13 +120,6 @@ export default function Dashboard() {
   const marathiCount = complaints.filter(
     (complaint) => complaint.language === "marathi"
   ).length;
-
-
-  console.log({
-    loading,
-    complaintsCount: complaints.length,
-    filteredCount: filteredComplaints.length,
-  });
 
 
 

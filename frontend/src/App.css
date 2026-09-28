@@ -1,96 +1,291 @@
 
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@400;500;600;700;800&display=swap');
+
+:root {
+  --primary: #123C36;
+  --primary-light: #176B56;
+  --primary-hover: #0D302B;
+  --background: #F5F7F6;
+  --surface: #FFFFFF;
+  --text: #202B28;
+  --muted: #687772;
+  --border: #DCE5E1;
+  --success-bg: #EAF5EE;
+  --success-text: #205C3B;
+  --error-bg: #FDECEC;
+  --error-text: #9B2222;
+}
+
 * {
   box-sizing: border-box;
 }
 
+html {
+  scroll-behavior: smooth;
+}
+
 body {
   margin: 0;
-  font-family: Arial, sans-serif;
-  background: #f4f7f6;
-  color: #172b2a;
+  font-family: 'DM Sans', sans-serif;
+  background: var(--background);
+  color: var(--text);
+  -webkit-font-smoothing: antialiased;
 }
+
+/* Main page */
 
 .container {
-  width: min(100% - 32px, 600px);
-  margin: 48px auto;
+  width: min(100% - 40px, 680px);
+  margin: 0 auto;
+  padding: 64px 0 72px;
 }
 
-header {
-  margin-bottom: 28px;
+/* Brand and introduction */
+
+.container > header {
+  margin-bottom: 36px;
+  text-align: center;
 }
 
-header h1 {
-  font-size: 36px;
-  margin-bottom: 8px;
+.container > header h1 {
+  display: inline-block;
+  margin: 0 0 18px;
+  font-family: 'Manrope', sans-serif;
+  font-size: clamp(34px, 6vw, 48px);
+  font-weight: 800;
+  letter-spacing: -2px;
+  line-height: 1.15;
+  color: var(--primary);
 }
 
-header p {
-  color: #536663;
-  line-height: 1.6;
+.container > header p {
+  max-width: 460px;
+  margin: 0 auto;
+  color: var(--muted);
+  font-size: 16px;
+  line-height: 1.8;
 }
 
-form {
-  background: white;
-  padding: 28px;
-  border-radius: 16px;
-  box-shadow: 0 6px 24px #172b2a0d;
+/* Complaint form card */
+
+.container > form {
+  background: var(--surface);
+  padding: clamp(24px, 5vw, 40px);
+  border: 1px solid rgba(18, 60, 54, 0.07);
+  border-radius: 24px;
+  box-shadow: 0 12px 45px rgba(18, 60, 54, 0.06);
 }
 
-label {
+/* Form labels */
+
+.container form label {
   display: block;
-  font-weight: 600;
-  margin: 20px 0 8px;
+  margin: 24px 0 10px;
+  color: var(--text);
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 1.5;
 }
 
-input,
-select,
-textarea {
+.container form label:first-child {
+  margin-top: 0;
+}
+
+/* Inputs, dropdown, and complaint description */
+
+.container form input,
+.container form select,
+.container form textarea {
+  display: block;
   width: 100%;
-  padding: 14px;
-  border: 1px solid #ccd7d4;
-  border-radius: 8px;
-  font: inherit;
-  font-size: 16px;
-  background: white;
-  color: black;
+  min-height: 54px;
+  padding: 15px 16px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  outline: none;
+  background: #FBFCFB;
+  color: var(--text);
+  font-family: 'DM Sans', sans-serif;
+  font-size: 15px;
+  line-height: 1.5;
+  transition: border-color 0.2s ease,
+              box-shadow 0.2s ease,
+              background 0.2s ease;
 }
 
-textarea {
-  resize: vertical;
-}
-
-button {
-  width: 100%;
-  margin-top: 24px;
-  padding: 15px;
-  border: none;
-  border-radius: 8px;
-  background: #287399;
-  color: white;
-  font-size: 16px;
-  font-weight: 600;
+.container form select {
   cursor: pointer;
 }
 
-button:disabled {
-  opacity: 0.6;
+.container form textarea {
+  min-height: 160px;
+  resize: vertical;
+}
+
+.container form input::placeholder,
+.container form textarea::placeholder {
+  color: #9AA7A2;
+  opacity: 1;
+}
+
+.container form input:focus,
+.container form select:focus,
+.container form textarea:focus {
+  border-color: var(--primary-light);
+  background: var(--surface);
+  box-shadow: 0 0 0 4px rgba(23, 107, 86, 0.09);
+}
+
+/* Submit button */
+
+.container form button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  min-height: 56px;
+  margin-top: 28px;
+  padding: 16px 24px;
+  border: none;
+  border-radius: 12px;
+  background: var(--primary);
+  color: white;
+  font-family: 'DM Sans', sans-serif;
+  font-size: 16px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.2s ease,
+              transform 0.2s ease,
+              box-shadow 0.2s ease;
+}
+
+.container form button:hover:not(:disabled) {
+  background: var(--primary-light);
+  transform: translateY(-2px);
+  box-shadow: 0 8px 20px rgba(18, 60, 54, 0.16);
+}
+
+.container form button:active:not(:disabled) {
+  transform: translateY(0);
+}
+
+.container form button:disabled {
+  background: #80958F;
+  opacity: 0.75;
   cursor: not-allowed;
 }
 
-.error,
-.success {
-  margin-top: 20px;
-  padding: 20px;
-  border-radius: 12px;
+/* Error and success messages */
+
+.container > .error,
+.container > .success {
+  margin-top: 24px;
+  padding: 24px;
+  border-radius: 16px;
+  overflow-wrap: anywhere;
+  line-height: 1.7;
+}
+
+.container > .error {
+  border: 1px solid #F5CACA;
+  background: var(--error-bg);
+  color: var(--error-text);
+}
+
+.container > .success {
+  border: 1px solid #C9E5D2;
+  background: var(--success-bg);
+  color: var(--success-text);
+}
+
+.container > .success h2 {
+  margin: 0 0 16px;
+  font-family: 'Manrope', sans-serif;
+  font-size: 22px;
+  font-weight: 800;
+}
+
+.container > .success p {
+  margin: 12px 0;
+  font-size: 15px;
+  line-height: 1.7;
+}
+
+.container > .success strong {
+  display: inline-block;
+  margin: 4px 0;
+  padding: 10px 14px;
+  border: 1px dashed #8CB99B;
+  border-radius: 10px;
+  background: white;
+  color: var(--primary);
+  font-size: 17px;
+  letter-spacing: 0.5px;
   overflow-wrap: anywhere;
 }
 
-.error {
-  background: #feecec;
-  color: #9b2222;
+/* Mobile responsive design */
+
+@media (max-width: 600px) {
+  .container {
+    width: min(100% - 28px, 680px);
+    padding: 40px 0 48px;
+  }
+
+  .container > header {
+    margin-bottom: 28px;
+  }
+
+  .container > header h1 {
+    font-size: 36px;
+    letter-spacing: -1.5px;
+  }
+
+  .container > header p {
+    max-width: 330px;
+    font-size: 14px;
+    line-height: 1.8;
+  }
+
+  .container > form {
+    padding: 24px 20px;
+    border-radius: 20px;
+  }
+
+  .container form label {
+    margin-top: 22px;
+    font-size: 14px;
+  }
+
+  .container form input,
+  .container form select,
+  .container form textarea {
+    font-size: 16px;
+  }
+
+  .container form textarea {
+    min-height: 140px;
+  }
+
+  .container form button {
+    min-height: 54px;
+    font-size: 15px;
+  }
+
+  .container > .success,
+  .container > .error {
+    padding: 20px;
+  }
 }
 
-.success {
-  background: #e5f4eb;
-  color: #205c3b;
+/* Accessibility */
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+  }
 }
