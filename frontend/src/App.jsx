@@ -1,3 +1,4 @@
+/* trunk-ignore-all(prettier) */
 
 import { useState, useEffect, useRef } from "react";
 import "./App.css";
@@ -20,6 +21,18 @@ function App() {
   const transliterationRequest = useRef(0);
 
   const complaintRef = useRef(null);
+  const [isRecording, setIsRecording] = useState(false);
+  const [audioBlob, setAudioBlob] = useState(null);
+  const [recordingTime, setRecordingTime] = useState(0);
+  const [speechSupported, setSpeechSupported] = useState(false);
+
+  const mediaRecorderRef = useRef(null);
+  const streamRef = useRef(null);
+  const audioChunksRef = useRef([]);
+  const recognitionRef = useRef(null);
+  const recordingTimerRef = useRef(null);
+  const recordingStartRef = useRef(null);
+  const speechFinalRef = useRef("");
 
   async function handleComplaintKeyDown(event) {
     if (event.key !== " ") return;
@@ -195,6 +208,161 @@ function App() {
   }, [location, selectedLocation]);
 
 
+  function stopRecordingTimer() {
+    if (recordingTimerRef.current) {
+      clearInterval(recordingTimerRef.current);
+      recordingTimerRef.current = null;
+    }
+  }
+
+  async function startRecording() {
+    try {
+      setError("");
+      setAudioBlob(null);
+      setRecordingTime(0);
+      audioChunksRef.current = [];
+      speechFinalRef.current = "";
+
+      if (!navigator.mediaDevices?.getUserMedia) {
+        throw new Error(
+          "Audio recording is not supported in this browser or connection."
+        );
+      }
+
+      const stream = await navigator.mediaDevices.getUserMedia({
+        audio: true,
+      });
+
+      streamRef.current = stream;
+
+      const mimeType = MediaRecorder.isTypeSupported(
+        "audio/webm;codecs=opus"
+      )
+        ? "audio/webm;codecs=opus"
+        : "audio/webm";
+
+      const recorder = new MediaRecorder(stream, {
+        mimeType,
+      });
+
+      mediaRecorderRef.current = recorder;
+
+      recorder.ondataavailable = (event) => {
+        if (event.data.size > 0) {
+          audioChunksRef.current.push(event.data);
+        }
+      };
+
+      recorder.onstop = () => {
+        const blob = new Blob(audioChunksRef.current, {
+          type: recorder.mimeType || "audio/webm",
+        });
+
+        setAudioBlob(blob);
+
+        stream.getTracks().forEach((track) => track.stop());
+        streamRef.current = null;
+      };
+
+      recorder.start();
+
+      setIsRecording(true);
+      recordingStartRef.current = Date.now();
+
+      recordingTimerRef.current = setInterval(() => {
+        setRecordingTime(
+          Math.floor(
+            (Date.now() - recordingStartRef.current) / 1000
+          )
+        );
+      }, 1000);
+
+      // Speech recognition is optional.
+      const SpeechRecognition =
+        window.SpeechRecognition ||
+        window.webkitSpeechRecognition;
+
+      if (SpeechRecognition) {
+        const recognition = new SpeechRecognition();
+
+        recognition.lang =
+          language === "hindi" ? "hi-IN" : "mr-IN";
+
+        recognition.continuous = true;
+        recognition.interimResults = true;
+
+        recognition.onresult = (event) => {
+          let interim = "";
+
+          for (
+            let i = event.resultIndex;
+            i < event.results.length;
+            i++
+          ) {
+            const transcript = event.results[i][0].transcript;
+
+            if (event.results[i].isFinal) {
+              speechFinalRef.current += transcript + " ";
+            } else {
+              interim += transcript;
+            }
+          }
+
+          setText(
+            (speechFinalRef.current + interim).trimStart()
+          );
+        };
+
+        recognition.onerror = (event) => {
+          console.warn("Speech recognition:", event.error);
+        };
+
+        recognitionRef.current = recognition;
+        recognition.start();
+
+        setSpeechSupported(true);
+      } else {
+        setSpeechSupported(false);
+      }
+    } catch (err) {
+      setError(
+        err.message || "Could not start audio recording."
+      );
+
+      streamRef.current?.getTracks().forEach((track) =>
+        track.stop()
+      );
+
+      streamRef.current = null;
+    }
+  }
+
+  function stopRecording() {
+    if (mediaRecorderRef.current?.state === "recording") {
+      mediaRecorderRef.current.stop();
+    }
+
+    if (recognitionRef.current) {
+      recognitionRef.current.stop();
+      recognitionRef.current = null;
+    }
+
+    stopRecordingTimer();
+    setIsRecording(false);
+  }
+
+  function clearRecording() {
+    if (isRecording) {
+      stopRecording();
+    }
+
+    setAudioBlob(null);
+    setRecordingTime(0);
+    audioChunksRef.current = [];
+    speechFinalRef.current = "";
+  }
+
+
 
   async function handleSubmit(event) {
     event.preventDefault();
@@ -205,22 +373,25 @@ function App() {
     setLoading(true);
 
     try {
-      const response = await fetch(
-        "/api/submit-complaint",
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            text,
-            language,
-            location_raw: location,
-            landmark: landmark,
-            source: "web-text",
-          }),
-        }
+      const formData = new FormData();
+
+      formData.append("text", text);
+      formData.append("language", language);
+      formData.append("location_raw", location);
+      formData.append("landmark", landmark);
+      formData.append(
+        "source",
+        audioBlob ? "web-voice" : "web-text"
       );
+
+      if (audioBlob) {
+        formData.append("audio", audioBlob, "complaint.webm");
+      }
+
+      const response = await fetch("/api/submit-complaint", {
+        method: "POST",
+        body: formData,
+      });
 
       const responseText = await response.text();
 
@@ -247,6 +418,7 @@ function App() {
       setText("");
       setLocation("");
       setLandmark("");
+      clearRecording();
     } catch (err) {
       setError(
         err.message || "Unable to connect to the server."
@@ -375,6 +547,78 @@ function App() {
           maxLength={2000}
           rows={6}
         />
+
+
+        <div className="recording-controls">
+          {!isRecording ? (
+            <button
+              type="button"
+              onClick={startRecording}
+              disabled={loading}
+              className="mic-button"
+              aria-label="Record complaint"
+              title="Record complaint"
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                width="24"
+                height="24"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                aria-hidden="true"
+              >
+                <rect x="9" y="2" width="6" height="12" rx="3" />
+                <path d="M5 10v2a7 7 0 0 0 14 0v-2" />
+                <line x1="12" y1="19" x2="12" y2="22" />
+                <line x1="8" y1="22" x2="16" y2="22" />
+              </svg>
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={stopRecording}
+            >
+              Stop recording
+            </button>
+          )}
+
+          {isRecording && (
+            <p>
+              Recording: {Math.floor(recordingTime / 60)}:
+              {String(recordingTime % 60).padStart(2, "0")}
+            </p>
+          )}
+
+          {audioBlob && (
+            <div>
+              <p>Recording ready</p>
+
+              <audio
+                controls
+                src={URL.createObjectURL(audioBlob)}
+              />
+
+              <button
+                type="button"
+                onClick={clearRecording}
+              >
+                Remove recording
+              </button>
+            </div>
+          )}
+
+          {!speechSupported && !isRecording && (
+            <p>
+              Speech recognition may not be supported in this
+              browser. You can still record and submit audio.
+            </p>
+          )}
+        </div>
+
 
         <button type="submit" disabled={loading}>
           {loading

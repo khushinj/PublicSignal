@@ -9,6 +9,22 @@ from bson import ObjectId
 from bson.errors import InvalidId
 from pydantic import BaseModel, Field, field_validator
 import requests
+import os
+import cloudinary
+import cloudinary.uploader
+from pydantic import ValidationError
+from dotenv import load_dotenv
+from fastapi import UploadFile, File, Form
+
+
+load_dotenv()
+
+cloudinary.config(
+    cloud_name=os.getenv("CLOUDINARY_CLOUD_NAME"),
+    api_key=os.getenv("CLOUDINARY_API_KEY"),
+    api_secret=os.getenv("CLOUDINARY_API_SECRET"),
+    secure=True
+)
 
 class ComplaintStatusUpdate(BaseModel):
     status: str
@@ -134,26 +150,113 @@ def location_suggestions(q: str):
         )
 
 
-@router.post("/submit-complaint")
-def submit_complaint(request: ComplaintRequest):
-    supported_languages = ["hindi", "marathi"]
-    print("SUBMIT ENDPOINT HIT")
-    print("LOCATION RECEIVED:", repr(request.location_raw))
+def upload_complaint_audio(audio: UploadFile):
+    MAX_AUDIO_SIZE = 20 * 1024 * 1024  # 20 MB
 
-    if request.language.lower() not in supported_languages:
+    content_type = (audio.content_type or "").lower();
+
+allowed_types = (
+    "audio/webm",
+    "audio/wav",
+    "audio/x-wav",
+    "audio/mpeg",
+    "audio/mp4",
+    "audio/ogg",
+    "audio/x-m4a",
+    "audio/aac",
+    "application/octet-stream",
+)
+
+if not any(
+    content_type == allowed
+    or content_type.startswith(allowed + ";")
+    for allowed in allowed_types
+):
+    raise HTTPException(
+        status_code=400,
+        detail=f"Unsupported audio format: {content_type}"
+    )
+
+    audio.file.seek(0, 2)
+    file_size = audio.file.tell()
+    audio.file.seek(0)
+
+    if file_size > MAX_AUDIO_SIZE:
+        raise HTTPException(
+            status_code=400,
+            detail="Audio must be smaller than 20 MB."
+        )
+
+    try:
+        result = cloudinary.uploader.upload(
+            audio.file,
+            resource_type="video",
+            folder="publicsignal/audio",
+            timeout=60
+        )
+
+        return result["secure_url"]
+
+    except Exception as e:
+        print("Cloudinary audio upload failed:", str(e))
+
+        raise HTTPException(
+            status_code=502,
+            detail="Audio upload failed. Please try again."
+        )
+
+
+@router.post("/submit-complaint")
+def submit_complaint(
+    text: str = Form(...),
+    language: str = Form(...),
+    location_raw: str = Form(...),
+    landmark: str = Form(...),
+    source: str = Form("web-text"),
+    audio: UploadFile | None = File(None)
+):
+    supported_languages = ["hindi", "marathi"]
+
+    if language.lower() not in supported_languages:
         raise HTTPException(
             status_code=400,
             detail="Only Hindi and Marathi are currently supported"
         )
 
+    # Validate the complaint fields using your existing model
+    try:
+        request = ComplaintRequest(
+            text=text,
+            language=language,
+            location_raw=location_raw,
+            landmark=landmark,
+            source=source
+        )
+    except ValidationError as e:
+        raise HTTPException(
+            status_code=422,
+            detail=e.errors()
+        )
+
+    # Verify the complaint location
     verified_location = verify_location(request.location_raw)
 
     if verified_location is None:
         raise HTTPException(
             status_code=400,
-            detail="Location not found. Please enter a real locality, street, or landmark in India."
+            detail=(
+                "Location not found. Please enter a real locality, "
+                "street, or landmark in India."
+            )
         )
 
+    # Upload audio only when a recording is provided
+    audio_url = None
+
+    if audio and audio.filename:
+        audio_url = upload_complaint_audio(audio)
+
+    # Create complaint document
     complaint = {
         "id": str(uuid4()),
         "text": request.text,
@@ -164,6 +267,7 @@ def submit_complaint(request: ComplaintRequest):
         "longitude": verified_location["longitude"],
         "landmark": request.landmark,
         "source": request.source,
+        "audio_url": audio_url,
         "timestamp": datetime.now(timezone.utc).isoformat(),
         "status": "Pending"
     }
@@ -177,35 +281,12 @@ def submit_complaint(request: ComplaintRequest):
         }
 
     except Exception as e:
+        print("Complaint database error:", str(e))
+
         raise HTTPException(
             status_code=500,
             detail="Failed to save complaint to database"
         )
-    supported_languages = ["hindi", "marathi"]
-
-    if request.language.lower() not in supported_languages:
-        raise HTTPException(
-            status_code=400,
-            detail="Only Hindi and Marathi are currently supported"
-        )
-
-    complaint = {
-        "id": str(uuid4()),
-        "text": request.text,
-        "language": request.language.lower(),
-        "location_raw": request.location_raw,
-        "source": request.source,
-        "timestamp": datetime.now(timezone.utc).isoformat(),
-        "status": "Pending"
-    }
-
-    complaints.append(complaint)
-
-    return {
-        "message": "Complaint submitted successfully",
-        "complaint": complaint
-    }
-
 
 @router.get("/complaints")
 def get_complaints(
