@@ -153,29 +153,29 @@ def location_suggestions(q: str):
 def upload_complaint_audio(audio: UploadFile):
     MAX_AUDIO_SIZE = 20 * 1024 * 1024  # 20 MB
 
-    content_type = (audio.content_type or "").lower();
+    content_type = (audio.content_type or "").lower()
 
-allowed_types = (
-    "audio/webm",
-    "audio/wav",
-    "audio/x-wav",
-    "audio/mpeg",
-    "audio/mp4",
-    "audio/ogg",
-    "audio/x-m4a",
-    "audio/aac",
-    "application/octet-stream",
-)
-
-if not any(
-    content_type == allowed
-    or content_type.startswith(allowed + ";")
-    for allowed in allowed_types
-):
-    raise HTTPException(
-        status_code=400,
-        detail=f"Unsupported audio format: {content_type}"
+    allowed_types = (
+        "audio/webm",
+        "audio/wav",
+        "audio/x-wav",
+        "audio/mpeg",
+        "audio/mp4",
+        "audio/ogg",
+        "audio/x-m4a",
+        "audio/aac",
+        "application/octet-stream",
     )
+
+    if not any(
+        content_type == allowed
+        or content_type.startswith(allowed + ";")
+        for allowed in allowed_types
+    ):
+        raise HTTPException(
+            status_code=400,
+            detail=f"Unsupported audio format: {content_type}",
+        )
 
     audio.file.seek(0, 2)
     file_size = audio.file.tell()
@@ -184,7 +184,7 @@ if not any(
     if file_size > MAX_AUDIO_SIZE:
         raise HTTPException(
             status_code=400,
-            detail="Audio must be smaller than 20 MB."
+            detail="Audio must be smaller than 20 MB.",
         )
 
     try:
@@ -192,7 +192,7 @@ if not any(
             audio.file,
             resource_type="video",
             folder="publicsignal/audio",
-            timeout=60
+            timeout=60,
         )
 
         return result["secure_url"]
@@ -202,7 +202,7 @@ if not any(
 
         raise HTTPException(
             status_code=502,
-            detail="Audio upload failed. Please try again."
+            detail="Audio upload failed. Please try again.",
         )
 
 

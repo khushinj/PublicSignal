@@ -256,6 +256,7 @@ export default function Dashboard() {
               <thead>
                 <tr>
                   <th>Complaint</th>
+                  <th>Audio</th>
                   <th>Location</th>
                   <th>Language</th>
                   <th>Date</th>
@@ -268,6 +269,21 @@ export default function Dashboard() {
                   <tr key={complaint.id}>
                     <td className="complaint-text">
                       {complaint.text}
+                    </td>
+
+                    <td className="audio-cell">
+                      {complaint.audio_url ? (
+                        <audio
+                          controls
+                          preload="none"
+                          src={complaint.audio_url}
+                          style={{ width: "220px" }}
+                        >
+                          Your browser does not support audio playback.
+                        </audio>
+                      ) : (
+                        <span>No recording</span>
+                      )}
                     </td>
 
                     <td className="location-cell">
@@ -325,7 +341,7 @@ export default function Dashboard() {
 
                 {filteredComplaints.length === 0 && (
                   <tr>
-                    <td colSpan="5" className="empty-state">
+                    <td colSpan="6" className="empty-state">
                       {complaints.length === 0
                         ? "No complaints have been submitted yet."
                         : "No complaints match your search."}
