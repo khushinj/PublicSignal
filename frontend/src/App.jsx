@@ -1,10 +1,7 @@
 
-import { useState, useEffect } from "react";
-import { IndicTransliterate } from "@ai4bharat/indic-transliterate";
-import "@ai4bharat/indic-transliterate";
+import { useState, useEffect, useRef } from "react";
 import "./App.css";
 
-const API_URL = "";
 
 function App() {
   const [text, setText] = useState("");
@@ -17,6 +14,139 @@ function App() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState(null);
+
+
+  const transliterationTimer = useRef(null);
+  const transliterationRequest = useRef(0);
+
+  const complaintRef = useRef(null);
+
+  async function handleComplaintKeyDown(event) {
+    if (event.key !== " ") return;
+
+    const textarea = event.currentTarget;
+    const cursor = textarea.selectionStart;
+
+    const beforeCursor = text.slice(0, cursor);
+    const afterCursor = text.slice(cursor);
+
+    // Find the last word typed before the cursor.
+    const match = beforeCursor.match(/([A-Za-z]+)$/);
+
+    if (!match) return;
+
+    event.preventDefault();
+
+    const word = match[1];
+    const wordStart = cursor - word.length;
+
+    try {
+      const response = await fetch("/api/transliterate", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          text: word,
+          language,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error("Transliteration failed");
+      }
+
+      const data = await response.json();
+
+      const convertedText =
+        beforeCursor.slice(0, wordStart) +
+        data.transliterated +
+        " " +
+        afterCursor;
+
+      setText(convertedText);
+
+      requestAnimationFrame(() => {
+        if (complaintRef.current) {
+          const newCursor = wordStart + data.transliterated.length + 1;
+          complaintRef.current.focus();
+          complaintRef.current.setSelectionRange(
+            newCursor,
+            newCursor
+          );
+        }
+      });
+    } catch (error) {
+      console.error("Transliteration error:", error);
+
+      // If the API fails, preserve the user's typed space.
+      setText(beforeCursor + " " + afterCursor);
+    }
+  }
+
+  function handleComplaintChange(event) {
+    const value = event.target.value;
+
+    setText(value);
+
+    // Cancel the previous pending transliteration.
+    clearTimeout(transliterationTimer.current);
+
+    // Ignore empty input and words already in Devanagari.
+    const match = value.match(/(^|\s)([A-Za-z]+)(\s*)$/);
+
+    if (!match) return;
+
+    const word = match[2];
+    const prefix = match[1];
+    const trailingSpace = match[3];
+
+    const requestId = ++transliterationRequest.current;
+
+    transliterationTimer.current = setTimeout(async () => {
+      try {
+        const response = await fetch("/api/transliterate", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            text: word,
+            language,
+          }),
+        });
+
+        if (!response.ok) {
+          throw new Error("Transliteration failed");
+        }
+
+        const data = await response.json();
+
+        // Ignore outdated responses.
+        if (requestId !== transliterationRequest.current) {
+          return;
+        }
+
+        // Don't overwrite newer text typed by the user.
+        setText((currentText) => {
+          if (currentText !== value) {
+            return currentText;
+          }
+
+          return (
+            value.slice(0, value.length - match[0].length) +
+            prefix +
+            data.transliterated +
+            trailingSpace
+          );
+        });
+      } catch (error) {
+        console.error("Transliteration error:", error);
+      }
+    }, 700);
+  }
+
+
 
   useEffect(() => {
     if (location.trim().length < 3) {
@@ -229,25 +359,21 @@ function App() {
           Describe the infrastructure problem
         </label>
 
-        <IndicTransliterate
-          renderComponent={(props) => (
-            <textarea
-              {...props}
-              id="complaint"
-              placeholder={
-                language === "hindi"
-                  ? "अपने क्षेत्र की समस्या बताएं..."
-                  : "तुमच्या परिसरातील समस्या सांगा..."
-              }
-              required
-              minLength={5}
-              maxLength={2000}
-              rows={6}
-            />
-          )}
+        <textarea
+          id="complaint"
+          ref={complaintRef}
           value={text}
-          onChangeText={(value) => setText(value)}
-          lang={language === "hindi" ? "hi" : "mr"}
+          onChange={(e) => setText(e.target.value)}
+          onKeyDown={handleComplaintKeyDown}
+          placeholder={
+            language === "hindi"
+              ? "अपने क्षेत्र की समस्या बताएं..."
+              : "तुमच्या परिसरातील समस्या सांगा..."
+          }
+          required
+          minLength={5}
+          maxLength={2000}
+          rows={6}
         />
 
         <button type="submit" disabled={loading}>
