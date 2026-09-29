@@ -1,5 +1,7 @@
 
 import { useState, useEffect } from "react";
+import { IndicTransliterate } from "@ai4bharat/indic-transliterate";
+import "@ai4bharat/indic-transliterate";
 import "./App.css";
 
 const API_URL = "";
@@ -227,19 +229,25 @@ function App() {
           Describe the infrastructure problem
         </label>
 
-        <textarea
-          id="complaint"
+        <IndicTransliterate
+          renderComponent={(props) => (
+            <textarea
+              {...props}
+              id="complaint"
+              placeholder={
+                language === "hindi"
+                  ? "अपने क्षेत्र की समस्या बताएं..."
+                  : "तुमच्या परिसरातील समस्या सांगा..."
+              }
+              required
+              minLength={5}
+              maxLength={2000}
+              rows={6}
+            />
+          )}
           value={text}
-          onChange={(e) => setText(e.target.value)}
-          placeholder={
-            language === "hindi"
-              ? "अपने क्षेत्र की समस्या बताएं..."
-              : "तुमच्या परिसरातील समस्या सांगा..."
-          }
-          required
-          minLength={5}
-          maxLength={2000}
-          rows={6}
+          onChangeText={(value) => setText(value)}
+          lang={language === "hindi" ? "hi" : "mr"}
         />
 
         <button type="submit" disabled={loading}>

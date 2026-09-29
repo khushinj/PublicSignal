@@ -4,6 +4,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.database import check_database_connection
 from app.routes.complaints import router as complaints_router
 from app.routes import admin
+from app.routes import transliteration
 
 app = FastAPI(title="PublicSignal API")
 
@@ -18,6 +19,8 @@ app.add_middleware(
 
 app.include_router(complaints_router)
 app.include_router(admin.router)
+app.include_router(transliteration.router)
+
 
 @app.get("/")
 def home():
