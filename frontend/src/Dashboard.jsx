@@ -72,7 +72,7 @@ export default function Dashboard() {
         throw new Error(data.detail || "Failed to fetch complaints");
       }
 
-      setComplaints(data);
+      setComplaints(data.complaints || []);
     } catch (error) {
       console.error("Error fetching complaints:", error);
     } finally {
@@ -122,22 +122,34 @@ export default function Dashboard() {
     fetchComplaints();
   }, []);
 
-  // const filteredComplaints = complaints.filter((complaint) => {
-  //   const searchText = search.toLowerCase();
 
-  //   const matchesSearch =
-  //     (complaint.text || "").toLowerCase().includes(searchText) ||
-  //     (complaint.location_raw || "").toLowerCase().includes(searchText);
+  const filteredComplaints = complaints.filter((complaint) => {
+    const searchText = search.trim().toLowerCase();
 
-  //   const matchesLanguage =
-  //     language === "all" ||
-  //     complaint.language === language;
+    const matchesSearch =
+      String(complaint.id || "")
+        .toLowerCase()
+        .includes(searchText) ||
+      (complaint.text || "")
+        .toLowerCase()
+        .includes(searchText) ||
+      (complaint.location_raw || "")
+        .toLowerCase()
+        .includes(searchText) ||
+      (complaint.landmark || "")
+        .toLowerCase()
+        .includes(searchText);
 
-  //   return matchesSearch && matchesLanguage;
-  // });
+    const matchesLanguage =
+      language === "all" ||
+      (complaint.language || "").toLowerCase() ===
+      language.toLowerCase();
+
+    return matchesSearch && matchesLanguage;
+  });
 
 
-  const filteredComplaints = complaints;
+  // const filteredComplaints = complaints;
 
   const pendingCount = complaints.filter(
     (complaint) =>
@@ -191,7 +203,7 @@ export default function Dashboard() {
         </div>
 
         <div className="stat-card">
-          <p>Pending processing</p>
+          <p>Pending</p>
           <h2>{pendingCount}</h2>
           <span>Awaiting classification</span>
         </div>
@@ -255,6 +267,7 @@ export default function Dashboard() {
             <table className="complaints-table">
               <thead>
                 <tr>
+                  <th>Complaint No.</th>
                   <th>Complaint</th>
                   <th>Audio</th>
                   <th>Location</th>
@@ -267,6 +280,10 @@ export default function Dashboard() {
               <tbody>
                 {filteredComplaints.map((complaint) => (
                   <tr key={complaint.id}>
+                    <td className="complaint-number">
+                      {complaint.id || "N/A"}
+                    </td>
+
                     <td className="complaint-text">
                       {complaint.text}
                     </td>
@@ -341,7 +358,7 @@ export default function Dashboard() {
 
                 {filteredComplaints.length === 0 && (
                   <tr>
-                    <td colSpan="6" className="empty-state">
+                    <td colSpan="7" className="empty-state">
                       {complaints.length === 0
                         ? "No complaints have been submitted yet."
                         : "No complaints match your search."}

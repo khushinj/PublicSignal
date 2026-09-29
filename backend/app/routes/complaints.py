@@ -288,14 +288,11 @@ def submit_complaint(
             detail="Failed to save complaint to database"
         )
 
+
 @router.get("/complaints")
 def get_complaints(
     current_admin: dict = Depends(get_current_admin),
 ):
-    complaints = list(
-        complaints_collection.find({}, {"_id": 0})
-    )
-    return complaints
     try:
         complaints = list(
             complaints_collection.find(
@@ -309,7 +306,9 @@ def get_complaints(
             "complaints": complaints
         }
 
-    except Exception:
+    except Exception as e:
+        print("Failed to retrieve complaints:", str(e))
+
         raise HTTPException(
             status_code=500,
             detail="Failed to retrieve complaints"
