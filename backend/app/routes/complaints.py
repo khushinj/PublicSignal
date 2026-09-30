@@ -250,7 +250,7 @@ def submit_complaint(
     source: str = Form("web-text"),
     audio: UploadFile | None = File(None)
 ):
-    supported_languages = ["hindi", "marathi"]
+    supported_languages = ["english", "hindi", "marathi"]
 
     if language.lower() not in supported_languages:
         raise HTTPException(
@@ -293,15 +293,26 @@ def submit_complaint(
 
 
     ai_analysis = None
+    ai_analysis_status = "pending"
 
     try:
-        ai_analysis = analyze_complaint(
+        ai_analysis_result = analyze_complaint(
             text=request.text,
             language=request.language
         )
+
+        ai_analysis = ai_analysis_result.model_dump()
+        ai_analysis_status = "completed"
+
     except Exception as e:
-        print(f"Gemini analysis failed: {e}")
-        
+        print(
+            f"Gemini analysis failed | "
+            f"type={type(e).__name__} | "
+            f"error={e}"
+        )
+    
+        ai_analysis_status = "failed"
+         
     # Create complaint document
     complaint = {
         "id": str(uuid4()),
@@ -314,6 +325,7 @@ def submit_complaint(
         "landmark": request.landmark,
         "category": category,
         "ai_analysis": ai_analysis,
+        "ai_analysis_status": ai_analysis_status,
         "source": request.source,
         "audio_url": audio_url,
         "timestamp": datetime.now(timezone.utc).isoformat(),

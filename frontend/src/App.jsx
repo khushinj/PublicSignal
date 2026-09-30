@@ -746,19 +746,6 @@ function App() {
               required
               autoComplete="off"
             />
-
-            <button
-              type="button"
-              className="detect-location-button"
-              onClick={detectCurrentLocation}
-              disabled={gpsLoading || loading}
-            >
-              {gpsLoading
-                ? "Detecting location..."
-                : "Use my current location"}
-            </button>
-
-
             {locationLoading && (
               <p className="location-hint">
                 {t.searchingLocations}
@@ -805,6 +792,18 @@ function App() {
                 {t.locationSelected}
               </p>
             )}
+
+            <button
+              type="button"
+              className="detect-location-button"
+              onClick={detectCurrentLocation}
+              disabled={gpsLoading || loading}
+            >
+              {gpsLoading
+                ? "Detecting location..."
+                : "Use my current location"}
+            </button>
+
           </div>
 
 
