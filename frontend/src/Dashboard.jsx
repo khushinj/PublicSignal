@@ -1,6 +1,8 @@
 
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { MapContainer, TileLayer, CircleMarker, Popup } from "react-leaflet";
+import "leaflet/dist/leaflet.css";
 import "./Dashboard.css";
 
 
@@ -13,7 +15,8 @@ export default function Dashboard() {
   const [error, setError] = useState("");
   const [search, setSearch] = useState("");
   const [language, setLanguage] = useState("all");
-
+  const [hotspots, setHotspots] = useState([]);
+  const [hotspotsLoading, setHotspotsLoading] = useState(true);
 
   const handleLogout = () => {
     sessionStorage.removeItem("admin_token");
@@ -81,6 +84,36 @@ export default function Dashboard() {
   };
 
 
+  const fetchHotspots = async () => {
+    try {
+      const token = sessionStorage.getItem("admin_token");
+
+      if (!token) {
+        return;
+      }
+
+      const response = await fetch("/api/analytics/hotspots", {
+        method: "GET",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+      });
+
+      const data = await response.json();
+      console.log(data)
+      if (!response.ok) {
+        throw new Error(data.detail || "Failed to fetch hotspots");
+      }
+
+      setHotspots(data.hotspots || []);
+    } catch (error) {
+      console.error("Error fetching hotspots:", error);
+    } finally {
+      setHotspotsLoading(false);
+    }
+  };
+
   const updateComplaintStatus = async (complaintId, newStatus) => {
     try {
       const token = sessionStorage.getItem("admin_token");
@@ -120,6 +153,7 @@ export default function Dashboard() {
 
   useEffect(() => {
     fetchComplaints();
+    fetchHotspots();
   }, []);
 
 
@@ -165,6 +199,57 @@ export default function Dashboard() {
   ).length;
 
 
+  const getHotspotColor = (hotspot) => {
+    if ((hotspot.high_severity || 0) > 0) {
+      return "#dc2626";
+    }
+
+    if ((hotspot.complaint_count || 0) >= 5) {
+      return "#ea580c";
+    }
+
+    return "#f59e0b";
+  };
+
+  const getHotspotRadius = (hotspot) => {
+    const count = hotspot.complaint_count || 0;
+
+    return Math.min(30, Math.max(10, 8 + count * 2));
+  };
+
+  const maxHotspotComplaints = Math.max(
+    ...hotspots.map((hotspot) => hotspot.complaint_count || 0),
+    1
+  );
+
+  const priorityHotspots = hotspots
+    .map((hotspot) => {
+      const complaintCount = hotspot.complaint_count || 0;
+      const highSeverity = hotspot.high_severity || 0;
+
+      const volumeScore =
+        (complaintCount / maxHotspotComplaints) * 60;
+
+      const severityRatio =
+        complaintCount > 0
+          ? highSeverity / complaintCount
+          : 0;
+
+      const severityScore = severityRatio * 40;
+
+      const priorityScore = Math.round(
+        volumeScore + severityScore
+      );
+
+      return {
+        ...hotspot,
+        priority_score: priorityScore,
+      };
+    })
+    .sort(
+      (a, b) =>
+        b.priority_score - a.priority_score
+    );
 
   return (
     <div className="dashboard">
@@ -219,6 +304,184 @@ export default function Dashboard() {
           <h2>{marathiCount}</h2>
           <span>Submitted in Marathi</span>
         </div>
+      </section>
+
+      <section className="hotspots-section">
+        <div className="table-heading">
+          <div>
+            <h2>Civic issue hotspots</h2>
+            <p>
+              Areas with multiple reported infrastructure issues within 1 km.
+            </p>
+          </div>
+        </div>
+
+        {hotspotsLoading ? (
+          <p className="dashboard-message">
+            Loading hotspots...
+          </p>
+        ) : hotspots.length === 0 ? (
+          <p className="dashboard-message">
+            No hotspots detected yet.
+          </p>
+        ) : (
+          <div className="hotspot-map-wrapper">
+            <div className="hotspot-summary">
+              <div className="hotspot-summary-card">
+                <span>Hotspots</span>
+                <strong>{hotspots.length}</strong>
+              </div>
+
+              <div className="hotspot-summary-card">
+                <span>Reports in hotspots</span>
+                <strong>
+                  {hotspots.reduce(
+                    (total, hotspot) => total + (hotspot.complaint_count || 0),
+                    0
+                  )}
+                </strong>
+              </div>
+
+              <div className="hotspot-summary-card">
+                <span>High severity</span>
+                <strong>
+                  {hotspots.reduce(
+                    (total, hotspot) => total + (hotspot.high_severity || 0),
+                    0
+                  )}
+                </strong>
+              </div>
+            </div>
+
+            <div className="hotspot-legend">
+              <span className="legend-title">Map legend</span>
+
+              <span className="legend-item">
+                <span className="legend-dot high"></span>
+                High severity
+              </span>
+
+              <span className="legend-item">
+                <span className="legend-dot multiple"></span>
+                Multiple reports
+              </span>
+
+              <span className="legend-item">
+                <span className="legend-dot emerging"></span>
+                Emerging hotspot
+              </span>
+            </div>
+
+            <MapContainer
+              center={[19.076, 72.8777]}
+              zoom={11}
+              className="hotspot-map"
+              scrollWheelZoom={true}
+            >
+              <TileLayer
+                attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors, &copy; <a href="https://carto.com/attribution/">CARTO</a>'
+                url="https://basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}.png?key=cb1_44mo_1_b55d330c46d5f98f24d57eba"
+                maxZoom={20}
+              />
+
+              {hotspots.map((hotspot, index) => (
+                <CircleMarker
+                  key={`${hotspot.latitude}-${hotspot.longitude}-${index}`}
+                  center={[hotspot.latitude, hotspot.longitude]}
+                  radius={getHotspotRadius(hotspot)}
+                  pathOptions={{
+                    color: getHotspotColor(hotspot),
+                    fillColor: getHotspotColor(hotspot),
+                    fillOpacity: 0.45,
+                    weight: 2,
+                  }}
+                >
+                  <Popup>
+                    <div className="hotspot-popup">
+                      <h3>Civic issue hotspot</h3>
+
+                      <div className="hotspot-popup-stat">
+                        <span>Reports</span>
+                        <strong>{hotspot.complaint_count || 0}</strong>
+                      </div>
+
+                      <div className="hotspot-popup-stat">
+                        <span>High severity</span>
+                        <strong>{hotspot.high_severity || 0}</strong>
+                      </div>
+
+                      <div className="hotspot-popup-row">
+                        <span>Categories</span>
+                        <p>
+                          {Object.entries(hotspot.categories || {})
+                            .map(([category, count]) => `${category} (${count})`)
+                            .join(", ") || "No category data"}
+                        </p>
+                      </div>
+                    </div>
+                  </Popup>
+                </CircleMarker>
+              ))}
+            </MapContainer>
+
+            <section className="priority-section">
+              <div className="priority-heading">
+                <div>
+                  <h2>Priority locations</h2>
+                  <p>
+                    Areas ranked using complaint concentration and severity.
+                  </p>
+                </div>
+              </div>
+
+              <div className="priority-list">
+                {priorityHotspots.map((hotspot, index) => (
+                  <div
+                    className="priority-item"
+                    key={`${hotspot.latitude}-${hotspot.longitude}-${index}`}
+                  >
+                    <div className="priority-rank">
+                      {index + 1}
+                    </div>
+
+                    <div className="priority-main">
+                      <div className="priority-title-row">
+                        <h3>
+                          Civic hotspot {index + 1}
+                        </h3>
+
+                        <span className="priority-score">
+                          {hotspot.priority_score}/100
+                        </span>
+                      </div>
+
+                      <p className="priority-details">
+                        {hotspot.complaint_count || 0} reports
+                        {" · "}
+                        {hotspot.high_severity || 0} high-severity
+                        {" · "}
+                        {Object.entries(hotspot.categories || {})
+                          .map(([category, count]) => `${category} (${count})`)
+                          .join(", ") || "No category data"}
+                      </p>
+
+                      <p className="priority-reason">
+                        Priority is driven by complaint concentration
+                        and reported severity.
+                      </p>
+                    </div>
+                  </div>
+                ))}
+
+                {priorityHotspots.length === 0 && (
+                  <p className="priority-empty">
+                    No hotspot data available yet.
+                  </p>
+                )}
+              </div>
+            </section>
+          </div>
+        )}
       </section>
 
       <section className="complaints-section">

@@ -80,4 +80,4 @@ Rules:
         },
     )
 
-    return ComplaintAnalysis.model_validate_json(response.text)
+    return ComplaintAnalysis.model_validate_json(response.text).model_dump()
