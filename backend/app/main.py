@@ -6,6 +6,7 @@ from app.routes.complaints import router as complaints_router
 from app.routes import admin
 from app.routes import transliteration
 from app.routes import analytics
+from app.routes.infrastructure import router as infrastructure_router
 
 app = FastAPI(title="PublicSignal API")
 
@@ -22,7 +23,7 @@ app.include_router(complaints_router)
 app.include_router(admin.router)
 app.include_router(transliteration.router)
 app.include_router(analytics.router)
-
+app.include_router(infrastructure_router)
 
 @app.get("/")
 def home():
