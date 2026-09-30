@@ -217,39 +217,11 @@ export default function Dashboard() {
     return Math.min(30, Math.max(10, 8 + count * 2));
   };
 
-  const maxHotspotComplaints = Math.max(
-    ...hotspots.map((hotspot) => hotspot.complaint_count || 0),
-    1
+  const priorityHotspots = [...hotspots].sort(
+    (a, b) =>
+      (b.priority_score || 0) -
+      (a.priority_score || 0)
   );
-
-  const priorityHotspots = hotspots
-    .map((hotspot) => {
-      const complaintCount = hotspot.complaint_count || 0;
-      const highSeverity = hotspot.high_severity || 0;
-
-      const volumeScore =
-        (complaintCount / maxHotspotComplaints) * 60;
-
-      const severityRatio =
-        complaintCount > 0
-          ? highSeverity / complaintCount
-          : 0;
-
-      const severityScore = severityRatio * 40;
-
-      const priorityScore = Math.round(
-        volumeScore + severityScore
-      );
-
-      return {
-        ...hotspot,
-        priority_score: priorityScore,
-      };
-    })
-    .sort(
-      (a, b) =>
-        b.priority_score - a.priority_score
-    );
 
   return (
     <div className="dashboard">
@@ -435,43 +407,105 @@ export default function Dashboard() {
               </div>
 
               <div className="priority-list">
-                {priorityHotspots.map((hotspot, index) => (
-                  <div
-                    className="priority-item"
-                    key={`${hotspot.latitude}-${hotspot.longitude}-${index}`}
-                  >
-                    <div className="priority-rank">
-                      {index + 1}
-                    </div>
+                {priorityHotspots.map((hotspot, index) => {
+                  const infrastructure = hotspot.infrastructure_data;
 
-                    <div className="priority-main">
-                      <div className="priority-title-row">
-                        <h3>
-                          Civic hotspot {index + 1}
-                        </h3>
-
-                        <span className="priority-score">
-                          {hotspot.priority_score}/100
-                        </span>
+                  return (
+                    <div
+                      className="priority-item"
+                      key={`${hotspot.latitude}-${hotspot.longitude}-${index}`}
+                    >
+                      <div className="priority-rank">
+                        {index + 1}
                       </div>
 
-                      <p className="priority-details">
-                        {hotspot.complaint_count || 0} reports
-                        {" · "}
-                        {hotspot.high_severity || 0} high-severity
-                        {" · "}
-                        {Object.entries(hotspot.categories || {})
-                          .map(([category, count]) => `${category} (${count})`)
-                          .join(", ") || "No category data"}
-                      </p>
+                      <div className="priority-main">
+                        <div className="priority-title-row">
+                          <h3>
+                            Civic hotspot {index + 1}
+                          </h3>
 
-                      <p className="priority-reason">
-                        Priority is driven by complaint concentration
-                        and reported severity.
-                      </p>
+                          <span className="priority-score">
+                            {Math.round(hotspot.priority_score || 0)}/100
+                          </span>
+                        </div>
+
+                        <p className="priority-details">
+                          {hotspot.complaint_count || 0} reports
+                          {" · "}
+                          {hotspot.high_severity || 0} high-severity
+                          {" · "}
+                          {Object.entries(hotspot.categories || {})
+                            .map(
+                              ([category, count]) =>
+                                `${category} (${count})`
+                            )
+                            .join(", ") || "No category data"}
+                        </p>
+
+                        <div className="priority-breakdown">
+                          <div>
+                            <span>Complaint signal</span>
+                            <strong>
+                              {Math.round(hotspot.complaint_score || 0)}/100
+                            </strong>
+                          </div>
+
+                          <div>
+                            <span>Infrastructure signal</span>
+                            <strong>
+                              {Math.round(
+                                hotspot.infrastructure_score || 0
+                              )}/100
+                            </strong>
+                          </div>
+                        </div>
+
+                        {infrastructure && (
+                          <div className="infrastructure-context">
+                            <p>
+                              <strong>Infrastructure context</strong>
+                            </p>
+
+                            <p>
+                              District:{" "}
+                              {infrastructure.district || "Unknown"}
+                            </p>
+
+                            <p>
+                              Population density:{" "}
+                              {Math.round(
+                                infrastructure.population_density || 0
+                              )}{" "}
+                              / km²
+                            </p>
+
+                            <p>
+                              Road condition:{" "}
+                              {Math.round(
+                                infrastructure.road_condition_score || 0
+                              )}
+                              /100
+                            </p>
+
+                            <p>
+                              Water coverage:{" "}
+                              {Math.round(
+                                infrastructure.water_coverage_pct || 0
+                              )}%
+                            </p>
+                          </div>
+                        )}
+
+                        <p className="priority-reason">
+                          This location is prioritized using
+                          complaint volume, reported severity, and
+                          surrounding infrastructure conditions.
+                        </p>
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
 
                 {priorityHotspots.length === 0 && (
                   <p className="priority-empty">
