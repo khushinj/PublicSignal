@@ -96,6 +96,45 @@ const translations = {
     received:
       "तुमची तक्रार प्रक्रियेसाठी प्राप्त झाली आहे.",
   },
+
+  english: {
+    locationLabel: "Village, ward or area",
+    locationPlaceholder: "Enter your area, street or location...",
+    searchingLocations: "Searching locations...",
+    locationHint: "Select a location from the suggestions when available.",
+    locationSelected: "Location selected and verified.",
+    landmarkLabel: "Nearby landmark",
+    landmarkPlaceholder: "e.g. Near railway station, school or temple",
+    category: "Problem category",
+    categoryPlaceholder: "Select a problem category",
+    categories: {
+      roads: "Roads and potholes",
+      water: "Water problem",
+      drainage: "Drainage and waterlogging",
+      waste: "Waste and sanitation",
+      streetlights: "Streetlights",
+      transport: "Public transport",
+      electricity: "Electricity",
+      publicBuildings: "Public buildings",
+      environment: "Environment",
+      other: "Other",
+    },
+    complaintLabel: "Describe the public infrastructure problem",
+    complaintPlaceholder: "Describe the problem in your area...",
+    recordComplaint: "Record complaint",
+    stopRecording: "Stop recording",
+    recording: "Recording",
+    recordingReady: "Recording ready",
+    removeRecording: "Remove recording",
+    speechUnsupported:
+      "Speech recognition may not be available in this browser. You can still record and submit audio.",
+    submitting: "Submitting complaint...",
+    submitComplaint: "Submit complaint",
+    complaintSubmitted: "Complaint submitted",
+    complaintId: "Your complaint ID:",
+    status: "Status:",
+    received: "Your complaint has been received for processing.",
+  },
 };
 
 function App() {
@@ -115,7 +154,7 @@ function App() {
   const [category, setCategory] = useState("");
   const t = translations[language];
 
-  const transliterationTimer = useRef(null);
+  // const transliterationTimer = useRef(null);
   const transliterationRequest = useRef(0);
 
   const complaintRef = useRef(null);
@@ -205,7 +244,7 @@ function App() {
   }
 
   async function handleComplaintKeyDown(event) {
-    if (event.key !== " ") return;
+    if (event.key !== " " || language === "english") return;
 
     const textarea = event.currentTarget;
     const cursor = textarea.selectionStart;
@@ -267,67 +306,67 @@ function App() {
     }
   }
 
-  function handleComplaintChange(event) {
-    const value = event.target.value;
+  // function handleComplaintChange(event) {
+  //   const value = event.target.value;
 
-    setText(value);
+  //   setText(value);
 
-    // Cancel the previous pending transliteration.
-    clearTimeout(transliterationTimer.current);
+  //   // Cancel the previous pending transliteration.
+  //   clearTimeout(transliterationTimer.current);
 
-    // Ignore empty input and words already in Devanagari.
-    const match = value.match(/(^|\s)([A-Za-z]+)(\s*)$/);
+  //   // Ignore empty input and words already in Devanagari.
+  //   const match = value.match(/(^|\s)([A-Za-z]+)(\s*)$/);
 
-    if (!match) return;
+  //   if (!match) return;
 
-    const word = match[2];
-    const prefix = match[1];
-    const trailingSpace = match[3];
+  //   const word = match[2];
+  //   const prefix = match[1];
+  //   const trailingSpace = match[3];
 
-    const requestId = ++transliterationRequest.current;
+  //   const requestId = ++transliterationRequest.current;
 
-    transliterationTimer.current = setTimeout(async () => {
-      try {
-        const response = await fetch("/api/transliterate", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            text: word,
-            language,
-          }),
-        });
+  //   transliterationTimer.current = setTimeout(async () => {
+  //     try {
+  //       const response = await fetch("/api/transliterate", {
+  //         method: "POST",
+  //         headers: {
+  //           "Content-Type": "application/json",
+  //         },
+  //         body: JSON.stringify({
+  //           text: word,
+  //           language,
+  //         }),
+  //       });
 
-        if (!response.ok) {
-          throw new Error("Transliteration failed");
-        }
+  //       if (!response.ok) {
+  //         throw new Error("Transliteration failed");
+  //       }
 
-        const data = await response.json();
+  //       const data = await response.json();
 
-        // Ignore outdated responses.
-        if (requestId !== transliterationRequest.current) {
-          return;
-        }
+  //       // Ignore outdated responses.
+  //       if (requestId !== transliterationRequest.current) {
+  //         return;
+  //       }
 
-        // Don't overwrite newer text typed by the user.
-        setText((currentText) => {
-          if (currentText !== value) {
-            return currentText;
-          }
+  //       // Don't overwrite newer text typed by the user.
+  //       setText((currentText) => {
+  //         if (currentText !== value) {
+  //           return currentText;
+  //         }
 
-          return (
-            value.slice(0, value.length - match[0].length) +
-            prefix +
-            data.transliterated +
-            trailingSpace
-          );
-        });
-      } catch (error) {
-        console.error("Transliteration error:", error);
-      }
-    }, 250);
-  }
+  //         return (
+  //           value.slice(0, value.length - match[0].length) +
+  //           prefix +
+  //           data.transliterated +
+  //           trailingSpace
+  //         );
+  //       });
+  //     } catch (error) {
+  //       console.error("Transliteration error:", error);
+  //     }
+  //   });
+  // }
 
 
 
@@ -456,7 +495,11 @@ function App() {
         const recognition = new SpeechRecognition();
 
         recognition.lang =
-          language === "hindi" ? "hi-IN" : "mr-IN";
+          language === "english"
+            ? "en-IN"
+            : language === "hindi"
+              ? "hi-IN"
+              : "mr-IN";
 
         recognition.continuous = true;
         recognition.interimResults = true;
@@ -636,6 +679,18 @@ function App() {
               type="button"
               className="language-option"
               onClick={() => {
+                setLanguage("english");
+                setLanguageSelected(true);
+              }}
+            >
+              <span className="language-native">English</span>
+              <span className="language-english">English</span>
+            </button>
+
+            <button
+              type="button"
+              className="language-option"
+              onClick={() => {
                 setLanguage("hindi");
                 setLanguageSelected(true);
               }}
@@ -669,6 +724,7 @@ function App() {
             onChange={(e) => setLanguage(e.target.value)}
             className=''
           >
+            <option value="english">English</option>
             <option value="hindi">हिन्दी</option>
             <option value="marathi">मराठी</option>
           </select>

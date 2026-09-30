@@ -497,11 +497,55 @@ export default function Dashboard() {
                           </div>
                         )}
 
-                        <p className="priority-reason">
-                          This location is prioritized using
-                          complaint volume, reported severity, and
-                          surrounding infrastructure conditions.
-                        </p>
+                        <div className="priority-reason">
+                          <strong>Why this area matters</strong>
+
+                          <p>
+                            This hotspot has{" "}
+                            <strong>{hotspot.complaint_count || 0}</strong> reported complaints,
+                            including{" "}
+                            <strong>{hotspot.high_severity || 0}</strong> high-severity reports.
+                          </p>
+
+                          <p>
+                            Complaint signal:{" "}
+                            <strong>
+                              {Math.round(hotspot.complaint_score || 0)}/100
+                            </strong>
+                            {" · "}
+                            Infrastructure signal:{" "}
+                            <strong>
+                              {Math.round(hotspot.infrastructure_score || 0)}/100
+                            </strong>
+                          </p>
+
+                          {infrastructure && (
+                            <p>
+                              The surrounding infrastructure context indicates{" "}
+                              <strong>
+                                {infrastructure.district || "this area"}
+                              </strong>{" "}
+                              has a population density of approximately{" "}
+                              <strong>
+                                {Math.round(
+                                  infrastructure.population_density || 0
+                                )}
+                              </strong>{" "}
+                              people/km², with road condition at{" "}
+                              <strong>
+                                {Math.round(
+                                  infrastructure.road_condition_score || 0
+                                )}/100
+                              </strong>{" "}
+                              and water coverage at{" "}
+                              <strong>
+                                {Math.round(
+                                  infrastructure.water_coverage_pct || 0
+                                )}%
+                              </strong>.
+                            </p>
+                          )}
+                        </div>
                       </div>
                     </div>
                   );
