@@ -15,7 +15,7 @@ import cloudinary.uploader
 from pydantic import ValidationError
 from dotenv import load_dotenv
 from fastapi import UploadFile, File, Form
-
+from app.services.gemini_service import analyze_complaint
 
 load_dotenv()
 
@@ -291,6 +291,17 @@ def submit_complaint(
     if audio and audio.filename:
         audio_url = upload_complaint_audio(audio)
 
+
+    ai_analysis = None
+
+    try:
+        ai_analysis = analyze_complaint(
+            text=request.text,
+            language=request.language
+        )
+    except Exception as e:
+        print(f"Gemini analysis failed: {e}")
+        
     # Create complaint document
     complaint = {
         "id": str(uuid4()),
@@ -302,6 +313,7 @@ def submit_complaint(
         "longitude": verified_location["longitude"],
         "landmark": request.landmark,
         "category": category,
+        "ai_analysis": ai_analysis,
         "source": request.source,
         "audio_url": audio_url,
         "timestamp": datetime.now(timezone.utc).isoformat(),
