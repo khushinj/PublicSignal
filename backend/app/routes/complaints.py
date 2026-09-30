@@ -150,6 +150,40 @@ def location_suggestions(q: str):
         )
 
 
+@router.get("/location-reverse")
+async def reverse_location(latitude: float, longitude: float):
+    try:
+        response = requests.get(
+            "https://nominatim.openstreetmap.org/reverse",
+            params={
+                "lat": latitude,
+                "lon": longitude,
+                "format": "json",
+                "addressdetails": 1,
+            },
+            headers={
+                "User-Agent": "PublicSignal/1.0"
+            },
+            timeout=10,
+        )
+
+        response.raise_for_status()
+
+        data = response.json()
+
+        return {
+            "display_name": data.get("display_name", ""),
+            "latitude": latitude,
+            "longitude": longitude,
+        }
+
+    except requests.RequestException as error:
+        print("Reverse geocoding error:", error)
+        raise HTTPException(
+            status_code=502,
+            detail="Unable to identify this location."
+        )
+
 def upload_complaint_audio(audio: UploadFile):
     MAX_AUDIO_SIZE = 20 * 1024 * 1024  # 20 MB
 
@@ -212,6 +246,7 @@ def submit_complaint(
     language: str = Form(...),
     location_raw: str = Form(...),
     landmark: str = Form(...),
+    category: str = Form(...),
     source: str = Form("web-text"),
     audio: UploadFile | None = File(None)
 ):
@@ -266,6 +301,7 @@ def submit_complaint(
         "latitude": verified_location["latitude"],
         "longitude": verified_location["longitude"],
         "landmark": request.landmark,
+        "category": category,
         "source": request.source,
         "audio_url": audio_url,
         "timestamp": datetime.now(timezone.utc).isoformat(),

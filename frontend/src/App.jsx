@@ -2,20 +2,118 @@
 
 import { useState, useEffect, useRef } from "react";
 import "./App.css";
+const translations = {
+  hindi: {
+    locationLabel: "गाँव, वार्ड या क्षेत्र",
+    locationPlaceholder: "अपना क्षेत्र, सड़क या स्थान लिखें...",
+    searchingLocations: "स्थान खोज रहे हैं...",
+    locationHint: "उपलब्ध होने पर सुझावों में से स्थान चुनें।",
+    locationSelected: "स्थान चुना और सत्यापित किया गया।",
 
+    landmarkLabel: "नज़दीकी पहचान",
+    landmarkPlaceholder: "जैसे रेलवे स्टेशन, स्कूल या मंदिर के पास",
+
+    category: "समस्या की श्रेणी",
+    categoryPlaceholder: "समस्या की श्रेणी चुनें",
+    categories: {
+      roads: "सड़क और गड्ढे",
+      water: "पानी की समस्या",
+      drainage: "नाली और जलभराव",
+      waste: "कचरा और स्वच्छता",
+      streetlights: "स्ट्रीट लाइट",
+      transport: "सार्वजनिक परिवहन",
+      electricity: "बिजली",
+      publicBuildings: "सार्वजनिक इमारतें",
+      environment: "पर्यावरण",
+      other: "अन्य",
+    },
+
+    complaintLabel: "सार्वजनिक समस्या का विवरण",
+    complaintPlaceholder: "अपने क्षेत्र की समस्या बताएं...",
+
+    recordComplaint: "शिकायत रिकॉर्ड करें",
+    stopRecording: "रिकॉर्डिंग रोकें",
+    recording: "रिकॉर्डिंग",
+    recordingReady: "रिकॉर्डिंग तैयार है",
+    removeRecording: "रिकॉर्डिंग हटाएं",
+
+    speechUnsupported:
+      "इस ब्राउज़र में आवाज़ पहचान सुविधा उपलब्ध नहीं हो सकती। आप फिर भी ऑडियो रिकॉर्ड करके भेज सकते हैं।",
+
+    submitting: "शिकायत दर्ज हो रही है...",
+    submitComplaint: "शिकायत दर्ज करें",
+
+    complaintSubmitted: "शिकायत दर्ज हो गई",
+    complaintId: "आपकी शिकायत संख्या:",
+    status: "स्थिति:",
+    received:
+      "आपकी शिकायत प्रक्रिया के लिए प्राप्त हो गई है।",
+  },
+
+  marathi: {
+    locationLabel: "गाव, वॉर्ड किंवा परिसर",
+    locationPlaceholder: "तुमचा परिसर, रस्ता किंवा ठिकाण लिहा...",
+    searchingLocations: "ठिकाण शोधत आहोत...",
+    locationHint: "उपलब्ध असल्यास सूचनांमधून ठिकाण निवडा.",
+    locationSelected: "ठिकाण निवडले आणि सत्यापित केले आहे.",
+
+    landmarkLabel: "जवळची खूण",
+    landmarkPlaceholder: "उदा. रेल्वे स्टेशन, शाळा किंवा मंदिराजवळ",
+
+    category: "समस्येची श्रेणी",
+    categoryPlaceholder: "समस्येची श्रेणी निवडा",
+    categories: {
+      roads: "रस्ते आणि खड्डे",
+      water: "पाणी समस्या",
+      drainage: "नाले आणि पाणी साचणे",
+      waste: "कचरा आणि स्वच्छता",
+      streetlights: "स्ट्रीट लाईट",
+      transport: "सार्वजनिक वाहतूक",
+      electricity: "वीज",
+      publicBuildings: "सार्वजनिक इमारती",
+      environment: "पर्यावरण",
+      other: "इतर",
+    },
+
+    complaintLabel: "सार्वजनिक समस्येचे वर्णन",
+    complaintPlaceholder: "तुमच्या परिसरातील समस्या सांगा...",
+
+    recordComplaint: "तक्रार रेकॉर्ड करा",
+    stopRecording: "रेकॉर्डिंग थांबवा",
+    recording: "रेकॉर्डिंग",
+    recordingReady: "रेकॉर्डिंग तयार आहे",
+    removeRecording: "रेकॉर्डिंग हटवा",
+
+    speechUnsupported:
+      "या ब्राउझरमध्ये आवाज ओळखण्याची सुविधा उपलब्ध नसू शकते. तरीही तुम्ही ऑडिओ रेकॉर्ड करून पाठवू शकता.",
+
+    submitting: "तक्रार नोंदवत आहोत...",
+    submitComplaint: "तक्रार नोंदवा",
+
+    complaintSubmitted: "तक्रार नोंदवली गेली",
+    complaintId: "तुमचा तक्रार क्रमांक:",
+    status: "स्थिती:",
+    received:
+      "तुमची तक्रार प्रक्रियेसाठी प्राप्त झाली आहे.",
+  },
+};
 
 function App() {
   const [text, setText] = useState("");
   const [language, setLanguage] = useState("hindi");
+  const [languageSelected, setLanguageSelected] = useState(false);
   const [location, setLocation] = useState("");
   const [landmark, setLandmark] = useState("");
+  const [gpsLoading, setGpsLoading] = useState(false);
+  const [gpsCoordinates, setGpsCoordinates] = useState(null);
   const [locationSuggestions, setLocationSuggestions] = useState([]);
   const [selectedLocation, setSelectedLocation] = useState(null);
   const [locationLoading, setLocationLoading] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState(null);
-
+  const [category, setCategory] = useState("");
+  const t = translations[language];
 
   const transliterationTimer = useRef(null);
   const transliterationRequest = useRef(0);
@@ -33,6 +131,78 @@ function App() {
   const recordingTimerRef = useRef(null);
   const recordingStartRef = useRef(null);
   const speechFinalRef = useRef("");
+
+
+  function detectCurrentLocation() {
+    if (!navigator.geolocation) {
+      setError("Location detection is not supported by this browser.");
+      return;
+    }
+
+    setGpsLoading(true);
+    setError("");
+
+    navigator.geolocation.getCurrentPosition(
+      async (position) => {
+        const { latitude, longitude } = position.coords;
+
+        setGpsCoordinates({
+          latitude,
+          longitude,
+        });
+
+        try {
+          const response = await fetch(
+            `/api/location-reverse?latitude=${latitude}&longitude=${longitude}`
+          );
+
+          if (!response.ok) {
+            throw new Error("Could not identify your current location.");
+          }
+
+          const data = await response.json();
+
+          if (data.display_name) {
+            setLocation(data.display_name);
+
+            setSelectedLocation({
+              display_name: data.display_name,
+              latitude,
+              longitude,
+            });
+          }
+        } catch (error) {
+          console.error("Reverse location error:", error);
+
+          setError(
+            "Your location was detected, but we could not identify the area name. You can select it manually."
+          );
+        } finally {
+          setGpsLoading(false);
+        }
+      },
+      (error) => {
+        console.error("Geolocation error:", error);
+
+        setGpsLoading(false);
+
+        if (error.code === error.PERMISSION_DENIED) {
+          setError(
+            "Location permission was denied. You can select the problem location manually."
+          );
+        } else {
+          setError(
+            "Could not detect your location. You can select the problem location manually."
+          );
+        }
+      },
+      {
+        enableHighAccuracy: true,
+        timeout: 10000,
+        maximumAge: 300000,
+      }
+    );
+  }
 
   async function handleComplaintKeyDown(event) {
     if (event.key !== " ") return;
@@ -156,7 +326,7 @@ function App() {
       } catch (error) {
         console.error("Transliteration error:", error);
       }
-    }, 700);
+    }, 250);
   }
 
 
@@ -379,10 +549,23 @@ function App() {
       formData.append("language", language);
       formData.append("location_raw", location);
       formData.append("landmark", landmark);
+      formData.append("category", category);
       formData.append(
         "source",
         audioBlob ? "web-voice" : "web-text"
       );
+
+      if (gpsCoordinates) {
+        formData.append(
+          "latitude",
+          String(gpsCoordinates.latitude)
+        );
+
+        formData.append(
+          "longitude",
+          String(gpsCoordinates.longitude)
+        );
+      }
 
       if (audioBlob) {
         formData.append("audio", audioBlob, "complaint.webm");
@@ -419,6 +602,9 @@ function App() {
       setLocation("");
       setLandmark("");
       clearRecording();
+      setCategory("");
+      setGpsCoordinates(null);
+      setSelectedLocation(null);
     } catch (err) {
       setError(
         err.message || "Unable to connect to the server."
@@ -438,194 +624,298 @@ function App() {
         </p>
       </header>
 
-      <form onSubmit={handleSubmit}>
-        <label htmlFor="language">
-          Select your language
-        </label>
+      {!languageSelected ? (
+        <section className="language-screen">
+          <h2>Choose your language</h2>
+          <p>
+            अपनी भाषा चुनें / तुमची भाषा निवडा
+          </p>
 
-        <select
-          id="language"
-          value={language}
-          onChange={(e) => setLanguage(e.target.value)}
-          className=''
-        >
-          <option value="hindi">हिन्दी</option>
-          <option value="marathi">मराठी</option>
-        </select>
+          <div className="language-options">
+            <button
+              type="button"
+              className="language-option"
+              onClick={() => {
+                setLanguage("hindi");
+                setLanguageSelected(true);
+              }}
+            >
+              <span className="language-native">हिन्दी</span>
+              <span className="language-english">Hindi</span>
+            </button>
 
-        <label htmlFor="location">
-          Village, ward or area
-        </label>
+            <button
+              type="button"
+              className="language-option"
+              onClick={() => {
+                setLanguage("marathi");
+                setLanguageSelected(true);
+              }}
+            >
+              <span className="language-native">मराठी</span>
+              <span className="language-english">Marathi</span>
+            </button>
+          </div>
+        </section>
+      ) : (
+        <form onSubmit={handleSubmit}>
+          <label htmlFor="language">
+            Select your language
+          </label>
 
-        <div className="location-autocomplete">
-          <input
-            type="text"
-            value={location}
-            onChange={(e) => {
-              setLocation(e.target.value);
-              setSelectedLocation(null);
-            }}
-            placeholder="Start typing your area, street, or landmark..."
-            required
-            autoComplete="off"
-          />
+          <select
+            id="language"
+            value={language}
+            onChange={(e) => setLanguage(e.target.value)}
+            className=''
+          >
+            <option value="hindi">हिन्दी</option>
+            <option value="marathi">मराठी</option>
+          </select>
 
-          {locationLoading && (
-            <p className="location-hint">
-              Searching locations...
-            </p>
-          )}
+          <label htmlFor="location">
+            {t.locationLabel}
+          </label>
 
-          {locationSuggestions.length > 0 && (
-            <div className="location-suggestions">
-              {locationSuggestions.map((place, index) => (
-                <button
-                  type="button"
-                  key={`${place.latitude}-${place.longitude}-${index}`}
-                  className="location-suggestion"
-                  onClick={() => {
-                    setLocation(place.display_name);
-                    setSelectedLocation(place);
-                    setLocationSuggestions([]);
-                  }}
-                >
-                  {place.display_name}
-                </button>
-              ))}
-            </div>
-          )}
+          <div className="location-autocomplete">
+            <button
+              type="button"
+              className="detect-location-button"
+              onClick={detectCurrentLocation}
+              disabled={gpsLoading || loading}
+            >
+              {gpsLoading
+                ? "Detecting location..."
+                : "Use my current location"}
+            </button>
+            <input
+              type="text"
+              value={location}
+              onChange={(e) => {
+                setLocation(e.target.value);
+                setSelectedLocation(null);
+                setGpsCoordinates(null);
+              }}
+              placeholder={t.locationPlaceholder}
+              required
+              autoComplete="off"
+            />
 
-          {location.length >= 3 &&
-            !locationLoading &&
-            locationSuggestions.length === 0 &&
-            !selectedLocation && (
+            {locationLoading && (
               <p className="location-hint">
-                Select a location from the suggestions when available.
+                {t.searchingLocations}
               </p>
             )}
 
-          {selectedLocation && (
-            <p className="location-success">
-              Location selected and verified.
-            </p>
-          )}
-        </div>
+            {locationSuggestions.length > 0 && (
+              <div className="location-suggestions">
+                {locationSuggestions.map((place, index) => (
+                  <button
+                    type="button"
+                    key={`${place.latitude}-${place.longitude}-${index}`}
+                    className="location-suggestion"
+                    onClick={() => {
+                      setLocation(place.display_name);
+
+                      setSelectedLocation(place);
+
+                      setGpsCoordinates({
+                        latitude: Number(place.latitude),
+                        longitude: Number(place.longitude),
+                      });
+
+                      setLocationSuggestions([]);
+                    }}
+                  >
+                    {place.display_name}
+                  </button>
+                ))}
+              </div>
+            )}
+
+            {location.length >= 3 &&
+              !locationLoading &&
+              locationSuggestions.length === 0 &&
+              !selectedLocation && (
+                <p className="location-hint">
+                  {t.locationHint}
+                </p>
+              )}
+
+            {selectedLocation && (
+              <p className="location-success">
+                {t.locationSelected}
+              </p>
+            )}
+          </div>
 
 
-        <label htmlFor="landmark">
-          Nearby landmark
-        </label>
+          <label htmlFor="landmark">
+            {t.landmarkLabel}
+          </label>
 
-        <input
-          id="landmark"
-          type="text"
-          value={landmark}
-          onChange={(e) => setLandmark(e.target.value)}
-          placeholder="e.g. Near railway station, school or temple"
-          required
-          minLength={2}
-          maxLength={200}
-        />
+          <input
+            id="landmark"
+            type="text"
+            value={landmark}
+            onChange={(e) => setLandmark(e.target.value)}
+            placeholder={t.landmarkPlaceholder}
+            required
+            minLength={2}
+            maxLength={200}
+          />
 
-        <label htmlFor="complaint">
-          Describe the infrastructure problem
-        </label>
+          <label htmlFor="category">
+            {t.category}
+          </label>
 
-        <textarea
-          id="complaint"
-          ref={complaintRef}
-          value={text}
-          onChange={(e) => setText(e.target.value)}
-          onKeyDown={handleComplaintKeyDown}
-          placeholder={
-            language === "hindi"
-              ? "अपने क्षेत्र की समस्या बताएं..."
-              : "तुमच्या परिसरातील समस्या सांगा..."
-          }
-          required
-          minLength={5}
-          maxLength={2000}
-          rows={6}
-        />
+          <select
+            id="category"
+            value={category}
+            onChange={(e) => setCategory(e.target.value)}
+            required
+          >
+            <option value="">
+              {t.categoryPlaceholder}
+            </option>
+
+            <option value="roads">
+              {t.categories.roads}
+            </option>
+
+            <option value="water">
+              {t.categories.water}
+            </option>
+
+            <option value="drainage">
+              {t.categories.drainage}
+            </option>
+
+            <option value="waste">
+              {t.categories.waste}
+            </option>
+
+            <option value="streetlights">
+              {t.categories.streetlights}
+            </option>
+
+            <option value="transport">
+              {t.categories.transport}
+            </option>
+
+            <option value="electricity">
+              {t.categories.electricity}
+            </option>
+
+            <option value="publicBuildings">
+              {t.categories.publicBuildings}
+            </option>
+
+            <option value="environment">
+              {t.categories.environment}
+            </option>
+
+            <option value="other">
+              {t.categories.other}
+            </option>
+          </select>
 
 
-        <div className="recording-controls">
-          {!isRecording ? (
-            <button
-              type="button"
-              onClick={startRecording}
-              disabled={loading}
-              className="mic-button"
-              aria-label="Record complaint"
-              title="Record complaint"
-            >
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                width="24"
-                height="24"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                aria-hidden="true"
-              >
-                <rect x="9" y="2" width="6" height="12" rx="3" />
-                <path d="M5 10v2a7 7 0 0 0 14 0v-2" />
-                <line x1="12" y1="19" x2="12" y2="22" />
-                <line x1="8" y1="22" x2="16" y2="22" />
-              </svg>
-            </button>
-          ) : (
-            <button
-              type="button"
-              onClick={stopRecording}
-            >
-              Stop recording
-            </button>
-          )}
+          <label htmlFor="complaint">
+            {t.complaintLabel}
+          </label>
 
-          {isRecording && (
-            <p>
-              Recording: {Math.floor(recordingTime / 60)}:
-              {String(recordingTime % 60).padStart(2, "0")}
-            </p>
-          )}
+          <textarea
+            id="complaint"
+            ref={complaintRef}
+            value={text}
+            onChange={(e) => setText(e.target.value)}
+            onKeyDown={handleComplaintKeyDown}
+            placeholder={t.complaintPlaceholder}
+            required
+            minLength={5}
+            maxLength={2000}
+            rows={6}
+          />
 
-          {audioBlob && (
-            <div>
-              <p>Recording ready</p>
 
-              <audio
-                controls
-                src={URL.createObjectURL(audioBlob)}
-              />
-
+          <div className="recording-controls">
+            {!isRecording ? (
               <button
                 type="button"
-                onClick={clearRecording}
+                onClick={startRecording}
+                disabled={loading}
+                className="mic-button"
+                aria-label={t.recordComplaint}
+                title={t.recordComplaint}
               >
-                Remove recording
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  width="24"
+                  height="24"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  aria-hidden="true"
+                >
+                  <rect x="9" y="2" width="6" height="12" rx="3" />
+                  <path d="M5 10v2a7 7 0 0 0 14 0v-2" />
+                  <line x1="12" y1="19" x2="12" y2="22" />
+                  <line x1="8" y1="22" x2="16" y2="22" />
+                </svg>
               </button>
-            </div>
-          )}
+            ) : (
+              <button
+                type="button"
+                onClick={stopRecording}
+              >
+                {t.stopRecording}
+              </button>
+            )}
 
-          {!speechSupported && !isRecording && (
-            <p>
-              Speech recognition may not be supported in this
-              browser. You can still record and submit audio.
-            </p>
-          )}
-        </div>
+            {isRecording && (
+              <p>
+                {t.recording}: {Math.floor(recordingTime / 60)}:
+                {String(recordingTime % 60).padStart(2, "0")}
+              </p>
+            )}
+
+            {audioBlob && (
+              <div>
+                <p>{t.recordingReady}</p>
+
+                <audio
+                  controls
+                  src={URL.createObjectURL(audioBlob)}
+                />
+
+                <button
+                  type="button"
+                  onClick={clearRecording}
+                >
+                  {t.removeRecording}
+                </button>
+              </div>
+            )}
+
+            {!speechSupported && !isRecording && (
+              <p>
+                {t.speechUnsupported}
+              </p>
+            )}
+          </div>
 
 
-        <button type="submit" disabled={loading}>
-          {loading
-            ? "Submitting..."
-            : "Submit complaint"}
-        </button>
-      </form>
+          <button type="submit" disabled={loading}>
+            {loading
+              ? t.submitting
+              : t.submitComplaint}
+          </button>
+        </form>
+      )}
 
       {error && (
         <div className="error" role="alert">
@@ -635,13 +925,12 @@ function App() {
 
       {success && (
         <div className="success" role="status">
-          <h2>Complaint submitted</h2>
-          <p>Your complaint ID:</p>
+          <h2>{t.complaintSubmitted}</h2>
+          <p>{t.complaintId}:</p>
           <strong>{success.id}</strong>
-          <p>Status: {success.status}</p>
+          <p>{t.status} {success.status}</p>
           <p>
-            Your complaint has been received for
-            processing.
+            {t.received}
           </p>
         </div>
       )}
