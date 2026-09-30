@@ -283,6 +283,33 @@ body {
   width: 100% !important;
 }
 
+.detect-location-button {
+  display: block;
+  width: 260px !important;
+  height: 60px !important;
+  min-width: 260px;
+  padding: 0 !important;
+  margin: 20px auto !important;
+  /* margin: 10px auto 0; */
+  padding: 7px 12px;
+  border: none;
+  border-radius: 25px;
+  background: #2f7d32;
+  color: white;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.detect-location-button:hover:not(:disabled) {
+  background: #256b29;
+}
+
+.detect-location-button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
 /* Suggestions panel */
 .location-autocomplete .location-suggestions {
   position: absolute !important;
